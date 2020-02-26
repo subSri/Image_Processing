@@ -1,0 +1,148 @@
+
+Maximum Hue/Saturation/Brightnessn in an image dataset
+
+================================================================================
+a1_mainHSV
+--------------------------------------------------------------------------------
+mapreducer(0);    
+
+imds = datastore('/home/cse/Desktop/Max_RGB_HSV_Subham23-05-2019/Max_HSV/input_images','Type','image','FileExtensions','.png');
+
+output_folder = '/home/cse/out1';
+outds = mapreduce(imds, @mapRGB_job0, @reduceRGB_job0, 'OutputFolder', output_folder);
+output_folder = '/home/cse/out2';
+%readall(outds)
+ouds = mapreduce(outds, @map_job1, @red_job1, 'OutputFolder', output_folder);
+readall(ouds)
+----------------------------------------------------------------------------------
+
+
+==================================================================================
+mapRGB_job0
+----------------------------------------------------------------------------------
+function mapRGB_job0(data, info, intermKVStore)
+    add(intermKVStore, info.Filename,data);
+end
+----------------------------------------------------------------------------------
+
+=================================================================================
+reduceRGB_job0
+----------------------------------------------------------------------------------
+function reduceRGB_job0(intermkey, intermValIter, outKVStore)
+    start_ = find(intermkey == '/',1,'last');
+	end_ = find(intermkey == '.',1,'last');
+	key = intermkey(start_+1:end_-1);
+    while(hasnext(intermValIter))
+      
+        add(outKVStore,key,getnext(intermValIter));
+    
+    end
+end
+-----------------------------------------------------------------------------------
+
+===================================================================================
+map_job1
+-----------------------------------------------------------------------------------
+function map_job1(data, info, intermKVStore) 
+    %convert rgb array to hsv array
+        hsv = rgb2hsv(data.Value{1});
+        b = hsv(:,:,1);
+
+        % Extract Saturation values
+        g = hsv(:,:,2);
+
+        % Extract Brightness values
+        r = hsv(:,:,3);
+
+        % Find average of HSV values
+        avgH = mean(b(:));
+        avgS = mean(g(:));
+        avgV = mean(r(:));
+        
+    % key value pair for different attribute has the value of averageHSV concatenated with fileName
+    add(intermKVStore,char("hue"),avgH+"/"+data.Key{1});
+    add(intermKVStore,char("saturation"),avgS+"/"+data.Key{1});
+    add(intermKVStore,char("brightness"),avgV+"/"+data.Key{1});
+end
+-------------------------------------------------------------------------------------
+
+=====================================================================================
+red_job1
+-------------------------------------------------------------------------------------
+function red_job1(intermkey, intermValIter, outKVStore)
+max=0;  
+winner = "";
+while(hasnext(intermValIter))
+    t=string(getnext(intermValIter));  %every value for a key is stored in intermValIter
+    arr  = split(t,"/");            %this splits the string t which has fileName and maxValue in concatenation on the basis of “/”
+    numb1=arr(1);               %the maxHSV value for each FIleName is stored in numb1
+    fname=arr(2);           %the FileName of that MaxHSV value is stored in fname
+    numb=double(numb1);      %the maxHSV is in string nad is type casted to double for comparison 
+    if(numb>=max)           %checked for maximumHSV catering to each key i.e. Hue,Saturation,Brightness
+        max=numb;   
+        winner = fname;          %fname for maxHSv corresponding to fileName is stored in winner
+    end
+end
+    
+       %winner name is stored in output along with its maxHSV value where key is Hue,Saturation and Brightness
+  add(outKVStore,intermkey,"filename = "+winner+"  total_color = "+max);  
+  figure,imshow('/home/cse/Desktop/Max_RGB_HSV_Subham23-05-2019/Max_HSV/input_images/'+winner+'.png')
+ 
+end
+--------------------------------------------------------------------------------------
+
+=======================================================================================
+OUTPUT
+=======================================================================================
+
+>> a1_mainHSV
+********************************
+*      MAPREDUCE PROGRESS      *
+********************************
+Map   0% Reduce   0%
+Map  12% Reduce   0%
+Map  25% Reduce   0%
+Map  37% Reduce   0%
+Map  50% Reduce   0%
+Map  62% Reduce   0%
+Map  75% Reduce   0%
+Map  87% Reduce   0%
+Map 100% Reduce   0%
+Map 100% Reduce  13%
+Map 100% Reduce  25%
+Map 100% Reduce  38%
+Map 100% Reduce  50%
+Map 100% Reduce  63%
+Map 100% Reduce  75%
+Map 100% Reduce  88%
+Map 100% Reduce 100%
+********************************
+*      MAPREDUCE PROGRESS      *
+********************************
+Map   0% Reduce   0%
+Map  12% Reduce   0%
+Map  25% Reduce   0%
+Map  37% Reduce   0%
+Map  50% Reduce   0%
+Map  62% Reduce   0%
+Map  75% Reduce   0%
+Map  87% Reduce   0%
+Map 100% Reduce   0%
+Warning: MATLAB has disabled some advanced graphics rendering features by switching to software OpenGL. For more information,
+click here. 
+Map 100% Reduce  33%
+Map 100% Reduce  67%
+Map 100% Reduce 100%
+
+ans =
+
+  3×2 table
+
+        Key                               Value                       
+    ____________    __________________________________________________
+
+    'hue'           ["filename = PrussianBlue  total_color = 0.66667"]
+    'saturation'    ["filename = ZMediumRed  total_color = 0.75"     ]
+    'brightness'    ["filename = BrightFlourescent  total_color = 1" ]
+
+
